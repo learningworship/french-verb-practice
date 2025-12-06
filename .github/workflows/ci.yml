@@ -28,8 +28,9 @@ jobs:
           cache: 'npm'
       
       # Step 3: Install dependencies
+      # Using --legacy-peer-deps due to React 19 compatibility with testing libraries
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       
       # Step 4: Run linting (optional - uncomment if you add ESLint)
       # - name: Run linter
@@ -60,7 +61,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       
       - name: Check Expo build
         run: npx expo export --platform web --output-dir dist
