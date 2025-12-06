@@ -1,0 +1,67 @@
+# CI Pipeline for French Verb Practice App
+# Runs tests automatically on every push and pull request
+
+name: CI
+
+# When to run this workflow
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+      
+      # Step 4: Run linting (optional - uncomment if you add ESLint)
+      # - name: Run linter
+      #   run: npm run lint
+      
+      # Step 5: Run tests
+      - name: Run tests
+        run: npm test
+      
+      # Step 6: Upload test results (optional)
+      - name: Test Summary
+        if: always()
+        run: echo "✅ Tests completed!"
+
+  # Optional: Check that the app builds without errors
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check Expo build
+        run: npx expo export --platform web --output-dir dist
+
