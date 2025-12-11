@@ -94,6 +94,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       
+      - name: Install expo-updates (required for EAS Update)
+        run: npx expo install expo-updates
+      
       - name: Publish update
         run: eas update --auto --non-interactive
 
