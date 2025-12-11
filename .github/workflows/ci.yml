@@ -1,5 +1,6 @@
 # CI/CD Pipeline for French Verb Practice App
 # Runs tests on every push/PR, deploys to Expo on main branch
+# Auto-deploys when tests pass on main branch
 
 name: CI/CD
 
