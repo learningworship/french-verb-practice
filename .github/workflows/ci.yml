@@ -1,7 +1,7 @@
-# CI Pipeline for French Verb Practice App
-# Runs tests automatically on every push and pull request
+# CI/CD Pipeline for French Verb Practice App
+# Runs tests on every push/PR, deploys to Expo on main branch
 
-name: CI
+name: CI/CD
 
 # When to run this workflow
 on:
@@ -45,7 +45,7 @@ jobs:
         if: always()
         run: echo "✅ Tests completed!"
 
-  # Optional: Check that the app builds without errors
+  # Build check job
   build-check:
     name: Build Check
     runs-on: ubuntu-latest
@@ -65,4 +65,34 @@ jobs:
       
       - name: Check Expo build
         run: npx expo export --platform web --output-dir dist
+
+  # CD: Deploy to Expo (only on main branch, after tests pass)
+  deploy:
+    name: Deploy to Expo
+    runs-on: ubuntu-latest
+    needs: [test, build-check]  # Only run after tests and build pass
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      
+      - name: Publish update
+        run: eas update --auto --non-interactive
 
