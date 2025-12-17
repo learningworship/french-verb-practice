@@ -11,10 +11,12 @@ import PracticeScreen from './screens/PracticeScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import AdminScreen from './screens/AdminScreen';
 
 // Import utilities
 import { initializeDefaultVerbs } from './utils/storage';
 import { onAuthStateChange, getSession } from './utils/authService';
+import { checkIsAdmin } from './utils/adminService';
 
 // Create navigators
 const Tab = createBottomTabNavigator();
@@ -39,9 +41,10 @@ function AuthNavigator() {
 
 /**
  * Main Navigator - Shown when user IS logged in
- * Contains the tab navigation (Home, Practice, Settings)
+ * Contains the tab navigation (Home, Practice, Settings, Admin)
+ * Admin tab only visible to admin users
  */
-function MainNavigator() {
+function MainNavigator({ isAdmin }) {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -80,6 +83,20 @@ function MainNavigator() {
           title: 'Settings',
         }}
       />
+      {isAdmin && (
+        <Tab.Screen 
+          name="Admin" 
+          component={AdminScreen}
+          options={{
+            tabBarLabel: 'Admin',
+            title: 'Admin Panel',
+            headerStyle: {
+              backgroundColor: '#9C27B0',
+            },
+            tabBarActiveTintColor: '#9C27B0',
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
@@ -92,6 +109,13 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  const checkAdminStatus = async () => {
+    const adminStatus = await checkIsAdmin();
+    setIsAdmin(adminStatus);
+  };
 
   // Initialize app and set up auth listener
   useEffect(() => {
@@ -104,6 +128,11 @@ export default function App() {
         const session = await getSession();
         setIsAuthenticated(session !== null);
         
+        // Check admin status if logged in
+        if (session) {
+          await checkAdminStatus();
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to initialize app:', err);
@@ -115,9 +144,16 @@ export default function App() {
     initializeApp();
 
     // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChange((event, session) => {
+    const unsubscribe = onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event);
       setIsAuthenticated(session !== null);
+      
+      // Update admin status on auth change
+      if (session) {
+        await checkAdminStatus();
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     // Cleanup subscription on unmount
@@ -149,7 +185,7 @@ export default function App() {
   // Main app UI - show auth or main based on login state
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+      {isAuthenticated ? <MainNavigator isAdmin={isAdmin} /> : <AuthNavigator />}
       <StatusBar style={isAuthenticated ? "light" : "dark"} />
     </NavigationContainer>
   );
