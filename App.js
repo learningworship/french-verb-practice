@@ -1,33 +1,108 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
-// Import our screen components
+// Import screen components
 import HomeScreen from './screens/HomeScreen';
 import PracticeScreen from './screens/PracticeScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 
-// Import storage utilities
+// Import utilities
 import { initializeDefaultVerbs } from './utils/storage';
+import { onAuthStateChange, getSession } from './utils/authService';
 
-// Create the tab navigator
+// Create navigators
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
+/**
+ * Auth Navigator - Shown when user is NOT logged in
+ * Contains Login and Register screens
+ */
+function AuthNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false, // Hide header for auth screens
+      }}
+    >
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
+
+/**
+ * Main Navigator - Shown when user IS logged in
+ * Contains the tab navigation (Home, Practice, Settings)
+ */
+function MainNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: '#2196F3',
+        tabBarInactiveTintColor: 'gray',
+        headerStyle: {
+          backgroundColor: '#2196F3',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+          title: 'French Verb Practice',
+        }}
+      />
+      <Tab.Screen 
+        name="Practice" 
+        component={PracticeScreen}
+        options={{
+          tabBarLabel: 'Practice',
+          title: 'Practice',
+        }}
+      />
+      <Tab.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          tabBarLabel: 'Settings',
+          title: 'Settings',
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+/**
+ * Main App Component
+ * Manages auth state and shows appropriate navigator
+ */
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize the app with default verbs and API key on first load
+  // Initialize app and set up auth listener
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize default verbs
+        // Initialize default verbs (for local storage)
         await initializeDefaultVerbs();
         
-        // Note: API key should be entered by user in Settings screen
-        // Never hardcode API keys in source code!
+        // Check if user is already logged in
+        const session = await getSession();
+        setIsAuthenticated(session !== null);
         
         setIsLoading(false);
       } catch (err) {
@@ -38,14 +113,25 @@ export default function App() {
     };
 
     initializeApp();
-  }, []); // Empty array = run once on mount
+
+    // Subscribe to auth state changes
+    const unsubscribe = onAuthStateChange((event, session) => {
+      console.log('Auth event:', event);
+      setIsAuthenticated(session !== null);
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Show loading screen while initializing
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Loading verbs...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -60,48 +146,11 @@ export default function App() {
     );
   }
 
-  // Main app UI
+  // Main app UI - show auth or main based on login state
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          tabBarActiveTintColor: '#2196F3',
-          tabBarInactiveTintColor: 'gray',
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Tab.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{
-            tabBarLabel: 'Home',
-            title: 'French Verb Practice',
-          }}
-        />
-        <Tab.Screen 
-          name="Practice" 
-          component={PracticeScreen}
-          options={{
-            tabBarLabel: 'Practice',
-            title: 'Practice',
-          }}
-        />
-        <Tab.Screen 
-          name="Settings" 
-          component={SettingsScreen}
-          options={{
-            tabBarLabel: 'Settings',
-            title: 'Settings',
-          }}
-        />
-      </Tab.Navigator>
-      <StatusBar style="light" />
+      {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+      <StatusBar style={isAuthenticated ? "light" : "dark"} />
     </NavigationContainer>
   );
 }

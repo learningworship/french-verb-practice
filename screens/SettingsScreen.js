@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import { 
   getApiKey, 
@@ -17,6 +18,7 @@ import {
 } from '../utils/storage';
 import { getAvailableProviders } from '../utils/aiService';
 import { getUsageStats } from '../utils/costTracking';
+import { logout, getCurrentUser } from '../utils/authService';
 
 export default function SettingsScreen() {
   const [apiKey, setApiKey] = useState('');
@@ -24,6 +26,8 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [usageStats, setUsageStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -36,14 +40,46 @@ export default function SettingsScreen() {
       const provider = await getCurrentProvider();
       const key = await getApiKey(provider);
       const stats = await getUsageStats();
+      const currentUser = await getCurrentUser();
       
       setCurrentProviderState(provider);
       setApiKey(key || '');
       setUsageStats(stats);
+      setUser(currentUser);
       setLoading(false);
     } catch (error) {
       console.error('Error loading settings:', error);
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    const performLogout = async () => {
+      setLoggingOut(true);
+      const result = await logout();
+      setLoggingOut(false);
+      if (!result.success) {
+        Alert.alert('Error', result.error);
+      }
+      // Navigation handled by auth state listener in App.js
+    };
+
+    if (Platform.OS === 'web') {
+      // Web: Use browser's confirm dialog
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        performLogout();
+      }
+    } else {
+      // iOS/Android: Use native Alert with buttons
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Logout', style: 'destructive', onPress: performLogout }
+        ]
+      );
     }
   };
 
@@ -171,6 +207,30 @@ export default function SettingsScreen() {
           <Text style={styles.infoText}>
             After saving your API key, go to the Practice tab to try writing French sentences and get AI feedback!
           </Text>
+        </View>
+
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👤 Account</Text>
+          {user && (
+            <View style={styles.accountInfo}>
+              <Text style={styles.accountEmail}>{user.email}</Text>
+              <Text style={styles.accountDetail}>
+                Member since: {new Date(user.created_at).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -307,6 +367,35 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2196F3',
+  },
+  accountInfo: {
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  accountEmail: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  accountDetail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  logoutButton: {
+    backgroundColor: '#f44336',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
 
