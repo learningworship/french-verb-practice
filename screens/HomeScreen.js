@@ -1,107 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { getAllVerbs } from '../utils/storage';
-import { testSupabaseConnection } from '../utils/supabaseTest';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { getPracticeStats } from '../utils/cloudStorage';
 
 export default function HomeScreen() {
-  const [verbs, setVerbs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [supabaseStatus, setSupabaseStatus] = useState(null); // null, 'testing', 'success', 'error'
-  const [cloudVerbCount, setCloudVerbCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    correctSessions: 0,
+    accuracy: 0,
+    totalVerbs: 0,
+    customVerbs: 0,
+  });
 
-  // Load verbs when screen mounts
-  useEffect(() => {
-    loadVerbs();
-  }, []);
+  // Load stats when screen is focused (every time user navigates here)
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [])
+  );
 
-  const loadVerbs = async () => {
+  const loadStats = async () => {
     try {
-      const allVerbs = await getAllVerbs();
-      setVerbs(allVerbs);
+      const result = await getPracticeStats();
+      if (result.success) {
+        setStats(result.stats);
+      }
       setLoading(false);
     } catch (error) {
-      console.error('Error loading verbs:', error);
+      console.error('Error loading stats:', error);
       setLoading(false);
     }
   };
 
-  // Test Supabase connection
-  const handleTestSupabase = async () => {
-    setSupabaseStatus('testing');
-    try {
-      const result = await testSupabaseConnection();
-      if (result.success) {
-        setSupabaseStatus('success');
-        setCloudVerbCount(result.verbCount);
-        Alert.alert(
-          '✅ Connection Successful!',
-          `Connected to Supabase!\nFound ${result.verbCount} verbs in cloud database.`,
-          [{ text: 'Great!' }]
-        );
-      } else {
-        setSupabaseStatus('error');
-        Alert.alert('❌ Connection Failed', result.error);
-      }
-    } catch (error) {
-      setSupabaseStatus('error');
-      Alert.alert('❌ Error', error.message);
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadStats();
+    setRefreshing(false);
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🏠 Home</Text>
-      <Text style={styles.subtitle}>Welcome to French Verb Practice!</Text>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <Text style={styles.title}>🇫🇷 French Verb Practice</Text>
+      <Text style={styles.subtitle}>Your progress at a glance</Text>
       
-      <View style={styles.statsContainer}>
+      {/* Stats Grid */}
+      <View style={styles.statsGrid}>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{verbs.length}</Text>
-          <Text style={styles.statLabel}>Local Verbs</Text>
+          <Text style={styles.statNumber}>{stats.totalVerbs}</Text>
+          <Text style={styles.statLabel}>Total Verbs</Text>
         </View>
         
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>
-            {supabaseStatus === 'success' ? cloudVerbCount : '?'}
+          <Text style={styles.statNumber}>{stats.customVerbs}</Text>
+          <Text style={styles.statLabel}>Custom Verbs</Text>
+        </View>
+        
+        <View style={styles.statBox}>
+          <Text style={styles.statNumber}>{stats.totalSessions}</Text>
+          <Text style={styles.statLabel}>Practice Sessions</Text>
+        </View>
+        
+        <View style={[styles.statBox, styles.accuracyBox]}>
+          <Text style={[styles.statNumber, styles.accuracyNumber]}>
+            {stats.accuracy}%
           </Text>
-          <Text style={styles.statLabel}>Cloud Verbs</Text>
+          <Text style={styles.statLabel}>Accuracy</Text>
         </View>
       </View>
 
-      {/* Supabase Test Button */}
-      <TouchableOpacity 
-        style={[
-          styles.testButton,
-          supabaseStatus === 'success' && styles.testButtonSuccess,
-          supabaseStatus === 'error' && styles.testButtonError,
-        ]}
-        onPress={handleTestSupabase}
-        disabled={supabaseStatus === 'testing'}
-      >
-        {supabaseStatus === 'testing' ? (
-          <ActivityIndicator color="#fff" />
+      {/* Encouragement Message */}
+      <View style={styles.messageBox}>
+        {stats.totalSessions === 0 ? (
+          <>
+            <Text style={styles.messageTitle}>👋 Welcome!</Text>
+            <Text style={styles.messageText}>
+              Start practicing in the Practice tab to build your French skills!
+            </Text>
+          </>
+        ) : stats.accuracy >= 80 ? (
+          <>
+            <Text style={styles.messageTitle}>🌟 Excellent!</Text>
+            <Text style={styles.messageText}>
+              Your accuracy is amazing! Keep up the great work!
+            </Text>
+          </>
+        ) : stats.accuracy >= 50 ? (
+          <>
+            <Text style={styles.messageTitle}>💪 Good Progress!</Text>
+            <Text style={styles.messageText}>
+              You're doing well! Practice more to improve your accuracy.
+            </Text>
+          </>
         ) : (
-          <Text style={styles.testButtonText}>
-            {supabaseStatus === 'success' 
-              ? '✅ Connected to Supabase' 
-              : supabaseStatus === 'error'
-              ? '❌ Retry Connection'
-              : '🔌 Test Supabase Connection'}
-          </Text>
+          <>
+            <Text style={styles.messageTitle}>📚 Keep Learning!</Text>
+            <Text style={styles.messageText}>
+              Every practice makes you better. Don't give up!
+            </Text>
+          </>
         )}
-      </TouchableOpacity>
+      </View>
 
-      <Text style={styles.description}>
-        Ready to practice? Go to the Practice tab to start!
-      </Text>
-    </View>
+      {/* Cloud Sync Status */}
+      <View style={styles.syncStatus}>
+        <Text style={styles.syncIcon}>☁️</Text>
+        <Text style={styles.syncText}>Data synced to cloud</Text>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -109,30 +130,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  contentContainer: {
     padding: 20,
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
+    color: '#333',
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 30,
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 25,
+    textAlign: 'center',
   },
-  statsContainer: {
+  statsGrid: {
     flexDirection: 'row',
-    marginBottom: 30,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 20,
+    width: '100%',
   },
   statBox: {
     backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
-    marginHorizontal: 10,
-    minWidth: 120,
+    borderRadius: 12,
+    margin: 8,
+    width: '42%',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -140,42 +174,63 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  accuracyBox: {
+    backgroundColor: '#e8f5e9',
+  },
   statNumber: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#2196F3',
     marginBottom: 5,
   },
+  accuracyNumber: {
+    color: '#4CAF50',
+  },
   statLabel: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+  },
+  messageBox: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    width: '100%',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  messageTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  messageText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    lineHeight: 20,
   },
-  description: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  testButton: {
-    backgroundColor: '#9C27B0',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    marginTop: 20,
-    minWidth: 250,
+  syncStatus: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 20,
+    marginTop: 10,
   },
-  testButtonSuccess: {
-    backgroundColor: '#4CAF50',
-  },
-  testButtonError: {
-    backgroundColor: '#f44336',
-  },
-  testButtonText: {
-    color: '#fff',
+  syncIcon: {
     fontSize: 16,
-    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  syncText: {
+    fontSize: 12,
+    color: '#1976D2',
   },
 });
 

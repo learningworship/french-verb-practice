@@ -11,11 +11,15 @@ import {
   ScrollView,
   Alert
 } from 'react-native';
-import { getRandomVerb, incrementPracticeCount } from '../utils/storage';
 import { getRandomTense } from '../data/tenses';
 import * as aiService from '../utils/aiService';
 import { rateLimiter } from '../utils/rateLimiter';
 import { checkBudget, getBudgetLimits } from '../utils/costTracking';
+import { 
+  getRandomVerb, 
+  incrementVerbPracticeCount, 
+  savePracticeSession 
+} from '../utils/cloudStorage';
 
 export default function PracticeScreen() {
   // State management
@@ -38,16 +42,17 @@ export default function PracticeScreen() {
     try {
       setLoading(true);
       
-      // Get random verb and tense
-      const verb = await getRandomVerb();
+      // Get random verb from cloud and random tense
+      const verbResult = await getRandomVerb();
       const tense = getRandomTense();
       
-      if (!verb) {
-        Alert.alert('No Verbs', 'Please add some verbs first!');
+      if (!verbResult.success || !verbResult.verb) {
+        Alert.alert('No Verbs', 'Please wait while your verbs are being loaded...');
+        setLoading(false);
         return;
       }
       
-      setCurrentVerb(verb);
+      setCurrentVerb(verbResult.verb);
       setCurrentTense(tense);
       setUserSentence(''); // Clear previous input
       setAiFeedback(null); // Clear previous feedback
@@ -102,8 +107,19 @@ export default function PracticeScreen() {
         userSentence
       );
       
-      // AI call successful! Now increment practice count
-      await incrementPracticeCount(currentVerb.id);
+      // AI call successful! Now save to cloud
+      // Increment practice count for this verb
+      await incrementVerbPracticeCount(currentVerb.id);
+      
+      // Save practice session to cloud
+      await savePracticeSession({
+        verbId: currentVerb.id,
+        verbText: currentVerb.verb,  // The actual verb text (e.g., "manger")
+        tense: currentTense.id,
+        userSentence: userSentence.trim(),
+        isCorrect: feedback.isCorrect || false,
+        aiFeedback: feedback,
+      });
       
       // Store and display feedback
       setAiFeedback(feedback);

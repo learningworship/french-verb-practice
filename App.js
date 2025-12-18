@@ -17,6 +17,7 @@ import AdminScreen from './screens/AdminScreen';
 import { initializeDefaultVerbs } from './utils/storage';
 import { onAuthStateChange, getSession } from './utils/authService';
 import { checkIsAdmin } from './utils/adminService';
+import { initializeUserVerbs } from './utils/cloudStorage';
 
 // Create navigators
 const Tab = createBottomTabNavigator();
@@ -111,10 +112,14 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check if user is admin
-  const checkAdminStatus = async () => {
+  // Check if user is admin and initialize their verbs
+  const onUserAuthenticated = async () => {
+    // Check admin status
     const adminStatus = await checkIsAdmin();
     setIsAdmin(adminStatus);
+    
+    // Initialize user verbs from default verbs (if they don't have any)
+    await initializeUserVerbs();
   };
 
   // Initialize app and set up auth listener
@@ -128,9 +133,9 @@ export default function App() {
         const session = await getSession();
         setIsAuthenticated(session !== null);
         
-        // Check admin status if logged in
+        // Initialize user data if logged in
         if (session) {
-          await checkAdminStatus();
+          await onUserAuthenticated();
         }
         
         setIsLoading(false);
@@ -148,9 +153,9 @@ export default function App() {
       console.log('Auth event:', event);
       setIsAuthenticated(session !== null);
       
-      // Update admin status on auth change
+      // Initialize user data on auth change
       if (session) {
-        await checkAdminStatus();
+        await onUserAuthenticated();
       } else {
         setIsAdmin(false);
       }
