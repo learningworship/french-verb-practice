@@ -3,7 +3,7 @@
     "name": "French Verb Practice",
     "slug": "french-verb-practice",
     "version": "1.0.0",
-    "description": "Practice French verb conjugation with AI-powered feedback",
+    "description": "Master French verb conjugation through interactive practice. Create sentences, get AI-powered feedback, and track your progress. Perfect for French learners of all levels.",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.frenchpractice.verbapp"
+      "bundleIdentifier": "com.frenchpractice.verbapp",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "This app does not track users across apps or websites."
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": []
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +30,9 @@
         "backgroundColor": "#2196F3"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.frenchpractice.verbapp"
+      "package": "com.frenchpractice.verbapp",
+      "versionCode": 1,
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,6 +42,18 @@
         "projectId": "9e5ef588-5fe0-4324-af98-02c9e110bf80"
       }
     },
-    "owner": "chuchufung"
+    "owner": "chuchufung",
+    "privacy": "public",
+    "keywords": [
+      "french",
+      "language",
+      "learning",
+      "verbs",
+      "conjugation",
+      "practice",
+      "education",
+      "ai",
+      "grammar"
+    ]
   }
 }
