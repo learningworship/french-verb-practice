@@ -9,6 +9,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import HomeScreen from './screens/HomeScreen';
 import PracticeScreen from './screens/PracticeScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import StatisticsScreen from './screens/StatisticsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -83,6 +84,14 @@ function MainNavigator({ isAdmin }) {
         options={{
           tabBarLabel: 'History',
           title: 'Practice History',
+        }}
+      />
+      <Tab.Screen 
+        name="Statistics" 
+        component={StatisticsScreen}
+        options={{
+          tabBarLabel: 'Stats',
+          title: 'Statistics',
         }}
       />
       <Tab.Screen 
